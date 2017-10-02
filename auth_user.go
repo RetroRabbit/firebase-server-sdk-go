@@ -14,6 +14,7 @@ type UserRecord struct {
 	ProviderData  []*UserInfo
 	Disabled      bool
 	Metadata      *UserMetadata
+	PhoneNumber   string
 }
 
 // UserInfo defines the data model for Firebase interface representing a user's info from a third-party
@@ -22,6 +23,7 @@ type UserInfo struct {
 	UID         string
 	ProviderID  string
 	DisplayName string
+	PhoneNumber string
 	Email       string
 	PhotoURL    string
 }
@@ -84,5 +86,11 @@ func (p UserProperties) SetPhotoURL(photoURL string) UserProperties {
 // SetDisabled sets whether or not the user is disabled
 func (p UserProperties) SetDisabled(disabled bool) UserProperties {
 	p["disabled"] = disabled
+	return p
+}
+
+// The user's new primary phone number. Must be a valid E.164 spec compliant phone number.
+func (p UserProperties) SetPhoneNumber(phoneNumber string) UserProperties {
+	p["phoneNumber"] = phoneNumber
 	return p
 }

@@ -129,6 +129,7 @@ type getAccountInfoResponse struct {
 type accountInfo struct {
 	LocalID          string          `json:"localId"`
 	Email            string          `json:"email"`
+	PhoneNumber      string          `json:"phoneNumber"`
 	EmailVerified    bool            `json:"emailVerified"`
 	DisplayName      string          `json:"displayName"`
 	PhotoURL         string          `json:"photoUrl"`
@@ -185,6 +186,7 @@ func newUserRecord(info *accountInfo) (*UserRecord, error) {
 	}
 	user := &UserRecord{
 		UID:           info.LocalID,
+		PhoneNumber:   info.PhoneNumber,
 		Email:         info.Email,
 		EmailVerified: info.EmailVerified,
 		DisplayName:   info.DisplayName,
@@ -200,6 +202,7 @@ func newUserRecord(info *accountInfo) (*UserRecord, error) {
 		user.ProviderData[idx] = &UserInfo{
 			UID:         val.RawID,
 			DisplayName: val.DisplayName,
+			PhoneNumber: info.PhoneNumber,
 			Email:       val.Email,
 			PhotoURL:    val.PhotoURL,
 			ProviderID:  val.ProviderID,
@@ -238,6 +241,7 @@ var (
 	deletableParams = map[string]string{
 		"displayName": "DISPLAY_NAME",
 		"photoURL":    "PHOTO_URL",
+		"phoneNumber": "PHONE_NUMBER",
 	}
 )
 
@@ -451,6 +455,7 @@ var (
 		"disableUser":     true,
 		"deleteAttribute": true,
 		"sanityCheck":     true,
+		"phoneNumber":     true,
 	}
 )
 
@@ -503,6 +508,11 @@ func validateCreateEditRequest(r map[string]interface{}) error {
 	if val, exists := r["disableUser"]; exists {
 		if _, ok := val.(bool); !ok {
 			return AuthErrInvalidDisabledField
+		}
+	}
+	if val, exists := r["phoneNumber"]; exists {
+		if _, ok := val.(string); !ok {
+			return AuthErrInvalidPhoneNumber
 		}
 	}
 	return nil

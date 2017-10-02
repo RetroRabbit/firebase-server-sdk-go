@@ -116,6 +116,12 @@ var (
 		Code:    "auth/user-not-found",
 		Message: "There is no user record corresponding to the provided identifier.",
 	}
+	// AuthErrInvalidPassword represents the default api error that
+	// the provided value for the password user property is invalid.
+	AuthErrInvalidPhoneNumber = &APIError{
+		Code:    "auth/invalid-phone-number",
+		Message: "The phoneNumber must be a string.",
+	}
 )
 
 var (

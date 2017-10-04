@@ -26,6 +26,7 @@ type UserInfo struct {
 	PhoneNumber string
 	Email       string
 	PhotoURL    string
+	FederatedID string
 }
 
 // UserMetadata defines the data model for Firebase interface representing a user's metadata.

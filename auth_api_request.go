@@ -129,8 +129,8 @@ type getAccountInfoResponse struct {
 type accountInfo struct {
 	LocalID          string          `json:"localId"`
 	Email            string          `json:"email"`
-	PhoneNumber      string          `json:"phoneNumber"`
 	EmailVerified    bool            `json:"emailVerified"`
+	PhoneNumber      string          `json:"phoneNumber"`
 	DisplayName      string          `json:"displayName"`
 	PhotoURL         string          `json:"photoUrl"`
 	Disabled         bool            `json:"disabled"`
@@ -146,6 +146,7 @@ type providerInfo struct {
 	ProviderID  string `json:"providerId"`
 	DisplayName string `json:"displayName"`
 	Email       string `json:"email"`
+	PhoneNumber string `json:"phoneNumber"`
 	PhotoURL    string `json:"photoUrl"`
 }
 
@@ -201,6 +202,7 @@ func newUserRecord(info *accountInfo) (*UserRecord, error) {
 	for idx, val := range info.ProviderUserInfo {
 		user.ProviderData[idx] = &UserInfo{
 			UID:         val.RawID,
+			FederatedID: val.FederatedID,
 			DisplayName: val.DisplayName,
 			PhoneNumber: info.PhoneNumber,
 			Email:       val.Email,
@@ -396,6 +398,7 @@ func (h *requestHandler) call(api *apiSettings, src, dst interface{}) error {
 	if err = loadHTTPResponse(resp, dst); err != nil {
 		return err
 	}
+	fmt.Println("Response: ", dst)
 	if api.respFn != nil {
 		if err = api.respFn(dst); err != nil {
 			return err

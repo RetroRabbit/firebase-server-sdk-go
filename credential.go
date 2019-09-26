@@ -70,7 +70,9 @@ var (
 	}
 )
 
-func ensureTokenSource(auth *Auth) error {
+func (auth *Auth) ensureTokenSource() error {
+	auth.tsLock.Lock()
+	defer auth.tsLock.Unlock()
 	if auth.ts != nil {
 		return nil
 	}

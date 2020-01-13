@@ -1,8 +1,11 @@
 package firebase
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"sync"
+	"time"
 
 	"golang.org/x/oauth2"
 )
@@ -87,7 +90,12 @@ func (a *Auth) VerifyIDTokenWithTransport(tokenString string, transport http.Rou
 		return nil, err
 	}
 	projectID := a.app.options.ServiceAccountCredential.ProjectID
-	return verify(projectID, tokenString, transport)
+
+	verifier, err := newIDTokenVerifier(context.Background(), projectID)
+	if err != nil {
+		return nil, err
+	}
+	return verifier.VerifyToken(context.Background(), tokenString)
 }
 
 // GetUser looks up the user identified by the provided user id and
@@ -144,4 +152,95 @@ func (auth *Auth) UpdateUser(uid string, properties UserProperties) (*UserRecord
 		return nil, err
 	}
 	return handler.getAccountByUID(uid)
+}
+
+// CreateSessionCookie attempts to create a session cookie for the given user id
+func (auth *Auth) CreateSessionCookie(idToken string, duration *time.Duration) (*string, error) {
+	if err := auth.ensureTokenSource(); err != nil {
+		return nil, err
+	}
+	handler := &requestHandler{ts: auth.ts}
+
+	_, err := auth.VerifyIDToken(idToken)
+	if err != nil {
+		return nil, err
+	}
+
+	expiry := int64((time.Hour * 24 * 5).Seconds())
+
+	if duration != nil {
+		expiry = int64(duration.Seconds())
+	}
+
+	return handler.createSessionCookie(idToken, expiry)
+}
+
+// VerifySessionCookieAndCheckRevoked checks if the cookie is valid and has not been revoked
+func (auth *Auth) VerifySessionCookieAndCheckRevoked(cookie string) (*UserRecord, error) {
+	if err := auth.ensureTokenSource(); err != nil {
+		return nil, err
+	}
+	projectID := auth.app.options.ServiceAccountCredential.ProjectID
+
+	handler := &requestHandler{ts: auth.ts}
+
+	return handler.verifySessionCookieAndCheckRevoked(projectID, cookie)
+}
+
+// CheckRevoked checks if the cookie has not been revoked
+func (auth *Auth) CheckRevoked(cookie string) (bool, error) {
+	if err := auth.ensureTokenSource(); err != nil {
+		return false, err
+	}
+	projectID := auth.app.options.ServiceAccountCredential.ProjectID
+
+	handler := &requestHandler{ts: auth.ts}
+
+	return handler.checkSessionCookieRevoked(projectID, cookie)
+}
+
+// VerifySessionCookie checks if the cookie is valid
+func (auth *Auth) VerifySessionCookie(cookie string) (*UserRecord, error) {
+	if err := auth.ensureTokenSource(); err != nil {
+		return nil, err
+	}
+	projectID := auth.app.options.ServiceAccountCredential.ProjectID
+
+	handler := &requestHandler{ts: auth.ts}
+
+	token, err := handler.verifySessionCookie(projectID, cookie)
+	if err != nil {
+		return nil, err
+	}
+
+	uid, ok := token.UID()
+	if !ok {
+		return nil, errors.New("Unable to extract user id from token")
+	}
+
+	return auth.GetUser(uid)
+}
+
+// RevokeRefreshTokens revokes all session cookie refresh tokens for the user
+func (auth *Auth) RevokeRefreshTokens(uid string) error {
+	if err := auth.ensureTokenSource(); err != nil {
+		return err
+	}
+	// handler := &requestHandler{ts: auth.ts}
+	user, err := auth.GetUser(uid)
+
+	if err != nil {
+		return err
+	}
+
+	if user.UID != uid {
+		return errors.New("User id match failed")
+	}
+
+	properties := UserProperties{}
+
+	properties.SetValidSince(time.Now())
+
+	_, err = auth.UpdateUser(uid, properties)
+	return err
 }

@@ -1,6 +1,10 @@
 package firebase
 
-import "github.com/SermoDigital/jose/jwt"
+import (
+	"time"
+
+	"github.com/SermoDigital/jose/jwt"
+)
 
 // Token is a parsed read-only ID Token struct.  It can be used to get the uid
 // and other attributes of the user provided in the token.
@@ -11,6 +15,40 @@ type Token struct {
 // UID returns the uid for this token.
 func (t *Token) UID() (string, bool) {
 	return t.delegate.Claims().Subject()
+}
+
+func (t *Token) SetUID(uid string) {
+	t.delegate.Claims().SetSubject(uid)
+}
+
+// IssuedAt returns the time this token was issued
+func (t *Token) IssuedAt() (time.Time, bool) {
+	return t.delegate.Claims().IssuedAt()
+}
+
+// IssuedAt returns the time this token was issued
+func (t *Token) AuthTime() (time.Time, bool) {
+	return t.delegate.Claims().GetTime("auth_time")
+}
+
+// Audience returns the audience for this token.
+func (t *Token) Audience() (string, bool) {
+	audience, ok := t.delegate.Claims().Audience()
+	if len(audience) == 0 {
+		return "", ok
+	} else {
+		return audience[0], ok
+	}
+}
+
+// Subject returns the subject for this token.
+func (t *Token) Subject() (string, bool) {
+	return t.delegate.Claims().Subject()
+}
+
+// Expires returns the time this token will expire
+func (t *Token) Expires() (time.Time, bool) {
+	return t.delegate.Claims().Expiration()
 }
 
 // Issuer returns the issuer for this token.
@@ -46,4 +84,10 @@ func (t *Token) IsEmailVerified() (bool, bool) {
 // Claims returns all of the claims on this token.
 func (t *Token) Claims() Claims {
 	return Claims(t.delegate.Claims())
+}
+
+func (t *Token) SetClaims(claims map[string]interface{}) {
+	for key, val := range claims {
+		t.delegate.Claims().Set(key, val)
+	}
 }

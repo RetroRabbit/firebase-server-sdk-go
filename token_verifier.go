@@ -1,5 +1,3 @@
-package firebase
-
 // Copyright 2018 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +12,8 @@ package firebase
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+package firebase
+
 import (
 	"bytes"
 	"context"
@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -49,14 +50,29 @@ const (
 	clientCertURL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
 )
 
-var SystemClock = Clock{}
+var SystemClock = &CurrentClock{}
+
+// Clock is used to query the current local time.
+type Clock interface {
+	Now() time.Time
+}
 
 // Clock returns the current system time.
-type Clock struct{}
+type CurrentClock struct{}
 
 // Now returns the current system time by calling time.Now().
-func (s *Clock) Now() time.Time {
+func (s *CurrentClock) Now() time.Time {
 	return time.Now()
+}
+
+// MockClock can be used to mock current time during tests.
+type MockClock struct {
+	Timestamp time.Time
+}
+
+// Now returns the timestamp set in the MockClock.
+func (m *MockClock) Now() time.Time {
+	return m.Timestamp
 }
 
 type jwtHeader struct {
@@ -168,9 +184,11 @@ func (tv *tokenVerifier) verifyContent(token string) (*Token, error) {
 		return nil, err
 	}
 
+	log.Printf("Token %v decoded: %+v\n", segments[1], payload)
+
 	issuer := tv.issuerPrefix + tv.projectID
 	if header.KeyID == "" {
-		if aud, ok := payload.Audience(); ok && aud == firebaseAudience {
+		if payload.Audience == firebaseAudience {
 			return nil, fmt.Errorf("expected %s but got a custom token", tv.articledShortName)
 		}
 		return nil, fmt.Errorf("%s has no 'kid' header", tv.shortName)
@@ -179,27 +197,23 @@ func (tv *tokenVerifier) verifyContent(token string) (*Token, error) {
 		return nil, fmt.Errorf("%s has invalid algorithm; expected 'RS256' but got %q",
 			tv.shortName, header.Algorithm)
 	}
-	if aud, ok := payload.Audience(); ok && aud != tv.projectID {
+	if payload.Audience != tv.projectID {
 		return nil, fmt.Errorf("%s has invalid 'aud' (audience) claim; expected %q but got %q; %s",
 			tv.shortName, tv.projectID, payload.Audience, tv.getProjectIDMatchMessage())
 	}
-	if iss, ok := payload.Issuer(); ok && iss != issuer {
+	if payload.Issuer != issuer {
 		return nil, fmt.Errorf("%s has invalid 'iss' (issuer) claim; expected %q but got %q; %s",
 			tv.shortName, issuer, payload.Issuer, tv.getProjectIDMatchMessage())
 	}
-	if sub, ok := payload.Subject(); !ok || sub == "" {
+	if payload.Subject == "" {
 		return nil, fmt.Errorf("%s has empty 'sub' (subject) claim", tv.shortName)
 	}
-	if sub, ok := payload.Subject(); ok && len(sub) > 128 {
+	if len(payload.Subject) > 128 {
 		return nil, fmt.Errorf("%s has a 'sub' (subject) claim longer than 128 characters",
 			tv.shortName)
 	}
 
-	sub, ok := payload.Subject()
-	if !ok {
-		return nil, fmt.Errorf("%s failed to load 'sub' (subject) claim", tv.shortName)
-	}
-	payload.SetUID(sub)
+	payload.UID = payload.Subject
 
 	var customClaims map[string]interface{}
 	if err := decode(segments[1], &customClaims); err != nil {
@@ -214,18 +228,10 @@ func (tv *tokenVerifier) verifyContent(token string) (*Token, error) {
 }
 
 func (tv *tokenVerifier) verifyTimestamps(payload *Token) error {
-	issuedAt, ok := payload.IssuedAt()
-	if !ok {
-		return fmt.Errorf("%s failed to load 'iat' (IssuedAt) claim", tv.shortName)
-	}
-	expireAt, ok := payload.Expires()
-	if !ok {
-		return fmt.Errorf("%s failed to load 'exp' (Expiration) claim", tv.shortName)
-	}
-	if (int64)(issuedAt.Second()-clockSkewSeconds) > tv.clock.Now().Unix() {
-		return fmt.Errorf("%s issued at future timestamp: %d", tv.shortName, issuedAt)
-	} else if (int64)(expireAt.Second()+clockSkewSeconds) < tv.clock.Now().Unix() {
-		return fmt.Errorf("%s has expired at: %d", tv.shortName, expireAt)
+	if (int64)(payload.IssuedAt-clockSkewSeconds) > tv.clock.Now().Unix() {
+		return fmt.Errorf("%s issued at future timestamp: %+v", tv.shortName, payload.IssuedAt)
+	} else if (int64)(payload.Expires+clockSkewSeconds) < tv.clock.Now().Unix() {
+		return fmt.Errorf("%s has expired at: %+v", tv.shortName, payload.Expires)
 	}
 	return nil
 }

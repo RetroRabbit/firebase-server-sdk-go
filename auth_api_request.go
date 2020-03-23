@@ -52,10 +52,8 @@ var (
 			return nil
 		},
 		respFn: func(src interface{}) error {
-			if r, ok := src.(*getAccountInfoResponse); !ok {
+			if _, ok := src.(*getAccountInfoResponse); !ok {
 				return errIllegalType
-			} else if len(r.Users) == 0 {
-				return AuthErrUserNotFound
 			}
 			return nil
 		},
@@ -118,12 +116,12 @@ var (
 )
 
 type getAccountInfoRequest struct {
-	LocalID []string `json:"localId,omitempty"`
-	Email   []string `json:"email,omitempty"`
+	LocalID string `json:"localId,omitempty"`
+	Email   string `json:"email,omitempty"`
 }
 
 type getAccountInfoResponse struct {
-	Users []*accountInfo `json:"users"`
+	Users *accountInfo `json:"users"`
 }
 
 type accountInfo struct {
@@ -154,13 +152,13 @@ func (h *requestHandler) getAccountByUID(uid string) (*UserRecord, error) {
 		return nil, AuthErrInvalidUID
 	}
 	req := &getAccountInfoRequest{
-		LocalID: []string{uid},
+		LocalID: uid,
 	}
 	resp := new(getAccountInfoResponse)
 	if err := h.call(getAccountInfoAPI, req, resp); err != nil {
 		return nil, err
 	}
-	return newUserRecord(resp.Users[0])
+	return newUserRecord(resp.Users)
 }
 
 func (h *requestHandler) getAccountByEmail(email string) (*UserRecord, error) {
@@ -168,13 +166,13 @@ func (h *requestHandler) getAccountByEmail(email string) (*UserRecord, error) {
 		return nil, AuthErrInvalidEmail
 	}
 	req := &getAccountInfoRequest{
-		Email: []string{email},
+		Email: email,
 	}
 	resp := new(getAccountInfoResponse)
 	if err := h.call(getAccountInfoAPI, req, resp); err != nil {
 		return nil, err
 	}
-	return newUserRecord(resp.Users[0])
+	return newUserRecord(resp.Users)
 }
 
 func newUserRecord(info *accountInfo) (*UserRecord, error) {

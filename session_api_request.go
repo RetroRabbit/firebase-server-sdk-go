@@ -18,30 +18,8 @@ var (
 			return nil
 		},
 		respFn: func(src interface{}) error {
-			if r, ok := src.(*getAccountInfoResponse); !ok {
+			if _, ok := src.(*getAccountInfoResponse); !ok {
 				return errIllegalType
-			} else if len(r.Users) == 0 {
-				return AuthErrUserNotFound
-			}
-			return nil
-		},
-	}
-	verifySessionCookieAndCheckRevokedAPI = &apiSettings{
-		method:   "POST",
-		endpoint: "createSessionCookie",
-		reqFn: func(src interface{}) error {
-			if r, ok := src.(*getAccountInfoRequest); !ok {
-				return errIllegalType
-			} else if s1, s2 := len(r.LocalID), len(r.Email); s1 == 0 && s2 == 0 {
-				return errMissingRequestTarget
-			}
-			return nil
-		},
-		respFn: func(src interface{}) error {
-			if r, ok := src.(*getAccountInfoResponse); !ok {
-				return errIllegalType
-			} else if len(r.Users) == 0 {
-				return AuthErrUserNotFound
 			}
 			return nil
 		},
@@ -86,10 +64,7 @@ func (h *requestHandler) verifySessionCookieAndCheckRevoked(projectID string, co
 		return nil, errors.New("Token has been revoked")
 	}
 
-	uid, ok := token.UID()
-	if !ok {
-		return nil, errors.New("Unable to extract user id from token")
-	}
+	uid := token.UID
 
 	return h.getAccountByUID(uid)
 }
@@ -117,20 +92,14 @@ func (h *requestHandler) checkSessionCookieRevoked(projectID string, cookie stri
 
 // checkRevoked checks if the given session cookie has been revoked
 func (h *requestHandler) checkRevoked(token *Token) (bool, error) {
-	uid, ok := token.UID()
-	if !ok {
-		return false, errors.New("User id could not be retrieved from token")
-	}
+	uid := token.UID
 
 	user, err := h.getAccountByUID(uid)
 	if err != nil {
 		return false, err
 	}
 
-	iat, ok := token.IssuedAt()
-	if !ok {
-		return false, errors.New("Unable to get issued at timestamp from token")
-	}
+	iat := token.IssuedAt
 
-	return ((int64)(iat.Second())*1000 < user.TokensValidAfterMillis), nil
+	return ((int64)(iat*1000) < user.TokensValidAfterMillis), nil
 }

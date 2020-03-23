@@ -2,7 +2,7 @@ package firebase
 
 import (
 	"context"
-	"errors"
+	"github.com/pkg/errors"
 	"net/http"
 	"sync"
 	"time"
@@ -102,7 +102,7 @@ func (a *Auth) VerifyIDTokenWithTransport(tokenString string, transport http.Rou
 // returns a user record for the given user if that user is found.
 func (auth *Auth) GetUser(uid string) (*UserRecord, error) {
 	if err := auth.ensureTokenSource(); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Error ensuring token source")
 	}
 	handler := &requestHandler{ts: auth.ts}
 	return handler.getAccountByUID(uid)
@@ -112,7 +112,7 @@ func (auth *Auth) GetUser(uid string) (*UserRecord, error) {
 // returns a user record for the given user if that user is found.
 func (auth *Auth) GetUserByEmail(email string) (*UserRecord, error) {
 	if err := auth.ensureTokenSource(); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Error ensuring token source")
 	}
 	handler := &requestHandler{ts: auth.ts}
 	return handler.getAccountByEmail(email)
@@ -121,7 +121,7 @@ func (auth *Auth) GetUserByEmail(email string) (*UserRecord, error) {
 // CreateUser creates a new user with the properties provided.
 func (auth *Auth) CreateUser(properties UserProperties) (*UserRecord, error) {
 	if err := auth.ensureTokenSource(); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Error ensuring token source")
 	}
 	handler := &requestHandler{ts: auth.ts}
 	uid, err := handler.createNewAccount(properties)
@@ -135,7 +135,7 @@ func (auth *Auth) CreateUser(properties UserProperties) (*UserRecord, error) {
 // nil error when the user is found and successfully deleted.
 func (auth *Auth) DeleteUser(uid string) error {
 	if err := auth.ensureTokenSource(); err != nil {
-		return err
+		return errors.Wrap(err, "Error ensuring token source")
 	}
 	handler := &requestHandler{ts: auth.ts}
 	return handler.deleteAccount(uid)
@@ -144,7 +144,7 @@ func (auth *Auth) DeleteUser(uid string) error {
 // UpdateUser updates an existing user with the properties provided.
 func (auth *Auth) UpdateUser(uid string, properties UserProperties) (*UserRecord, error) {
 	if err := auth.ensureTokenSource(); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Error ensuring token source")
 	}
 	handler := &requestHandler{ts: auth.ts}
 	uid, err := handler.updateExistingAccount(uid, properties)
@@ -157,7 +157,7 @@ func (auth *Auth) UpdateUser(uid string, properties UserProperties) (*UserRecord
 // CreateSessionCookie attempts to create a session cookie for the given user id
 func (auth *Auth) CreateSessionCookie(idToken string, duration *time.Duration) (*string, error) {
 	if err := auth.ensureTokenSource(); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Error ensuring token source")
 	}
 	handler := &requestHandler{ts: auth.ts}
 
@@ -178,7 +178,7 @@ func (auth *Auth) CreateSessionCookie(idToken string, duration *time.Duration) (
 // VerifySessionCookieAndCheckRevoked checks if the cookie is valid and has not been revoked
 func (auth *Auth) VerifySessionCookieAndCheckRevoked(cookie string) (*UserRecord, error) {
 	if err := auth.ensureTokenSource(); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Error ensuring token source")
 	}
 	projectID := auth.app.options.ServiceAccountCredential.ProjectID
 
@@ -190,7 +190,7 @@ func (auth *Auth) VerifySessionCookieAndCheckRevoked(cookie string) (*UserRecord
 // CheckRevoked checks if the cookie has not been revoked
 func (auth *Auth) CheckRevoked(cookie string) (bool, error) {
 	if err := auth.ensureTokenSource(); err != nil {
-		return false, err
+		return false, errors.Wrap(err, "Error ensuring token source")
 	}
 	projectID := auth.app.options.ServiceAccountCredential.ProjectID
 
@@ -202,7 +202,7 @@ func (auth *Auth) CheckRevoked(cookie string) (bool, error) {
 // VerifySessionCookie checks if the cookie is valid
 func (auth *Auth) VerifySessionCookie(cookie string) (*UserRecord, error) {
 	if err := auth.ensureTokenSource(); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Error ensuring token source")
 	}
 	projectID := auth.app.options.ServiceAccountCredential.ProjectID
 
@@ -213,10 +213,7 @@ func (auth *Auth) VerifySessionCookie(cookie string) (*UserRecord, error) {
 		return nil, err
 	}
 
-	uid, ok := token.UID()
-	if !ok {
-		return nil, errors.New("Unable to extract user id from token")
-	}
+	uid := token.UID
 
 	return auth.GetUser(uid)
 }
@@ -224,7 +221,7 @@ func (auth *Auth) VerifySessionCookie(cookie string) (*UserRecord, error) {
 // RevokeRefreshTokens revokes all session cookie refresh tokens for the user
 func (auth *Auth) RevokeRefreshTokens(uid string) error {
 	if err := auth.ensureTokenSource(); err != nil {
-		return err
+		return errors.Wrap(err, "Error ensuring token source")
 	}
 	// handler := &requestHandler{ts: auth.ts}
 	user, err := auth.GetUser(uid)

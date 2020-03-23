@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -183,8 +182,6 @@ func (tv *tokenVerifier) verifyContent(token string) (*Token, error) {
 	if err := decode(segments[1], &payload); err != nil {
 		return nil, err
 	}
-
-	log.Printf("Token %v decoded: %+v\n", segments[1], payload)
 
 	issuer := tv.issuerPrefix + tv.projectID
 	if header.KeyID == "" {

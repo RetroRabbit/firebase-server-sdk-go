@@ -1,20 +1,22 @@
 package firebase
 
 import (
+	"strconv"
 	"time"
 )
 
 // UserRecord defines the data model for Firebase interface representing a user.
 type UserRecord struct {
-	UID           string
-	DisplayName   string
-	Email         string
-	EmailVerified bool
-	PhotoURL      string
-	ProviderData  []*UserInfo
-	Disabled      bool
-	Metadata      *UserMetadata
-	PhoneNumber   string
+	UID                    string
+	DisplayName            string
+	Email                  string
+	EmailVerified          bool
+	PhotoURL               string
+	ProviderData           []*UserInfo
+	TokensValidAfterMillis int64 // milliseconds since epoch.
+	Disabled               bool
+	Metadata               *UserMetadata
+	PhoneNumber            string
 }
 
 // UserInfo defines the data model for Firebase interface representing a user's info from a third-party
@@ -92,5 +94,10 @@ func (p UserProperties) SetDisabled(disabled bool) UserProperties {
 // The user's new primary phone number. Must be a valid E.164 spec compliant phone number.
 func (p UserProperties) SetPhoneNumber(phoneNumber string) UserProperties {
 	p["phoneNumber"] = phoneNumber
+	return p
+}
+
+func (p UserProperties) SetValidSince(valid time.Time) UserProperties {
+	p["validSince"] = strconv.FormatInt(valid.Unix(), 10)
 	return p
 }

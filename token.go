@@ -17,28 +17,43 @@ type Token struct {
 
 // IssuedAt returns the time this token was issued
 func (t *Token) AuthTime() int64 {
-	return t.Claims["auth_time"].(int64)
+	if res, ok := (t.Claims["auth_time"]).(int64); ok {
+		return res
+	}
+	return int64(0)
 }
 
 // Name returns the user's display name.
 func (t *Token) Name() string {
-	return t.Claims["name"].(string)
+	if res, ok := (t.Claims["name"]).(string); ok {
+		return res
+	}
+	return ""
 }
 
 // Picture returns the URI string of the user's profile photo.
 func (t *Token) Picture() string {
-	return t.Claims["picture"].(string)
+	if res, ok := (t.Claims["picture"]).(string); ok {
+		return res
+	}
+	return ""
 }
 
 // Email returns the email address for this user, or nil if it's unavailable.
 func (t *Token) Email() string {
-	return t.Claims["email"].(string)
+	if res, ok := (t.Claims["email"]).(string); ok {
+		return res
+	}
+	return ""
 }
 
 // IsEmailVerified indicates if the email address returned by Email() has been
 // verified as good.
 func (t *Token) IsEmailVerified() bool {
-	return t.Claims["email_verified"].(bool)
+	if res, ok := (t.Claims["email_verified"]).(bool); ok {
+		return res
+	}
+	return false
 }
 
 // Claims returns all of the claims on this token.
